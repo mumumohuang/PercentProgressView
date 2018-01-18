@@ -2,7 +2,9 @@ package com.example.gyh.progressview;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
@@ -13,7 +15,7 @@ import android.view.View;
  * Created by youban01 on 2018/1/15.
  */
 
-public class ProgressView extends View {
+public class NewProgressView extends View {
 
     private Paint mBorderPaint;//边框画笔
     private Paint mFillPaint; //填充画笔
@@ -30,20 +32,21 @@ public class ProgressView extends View {
     private float mBorderWidth = 2f; //外边框的宽度
     private int mProgress = 0;//进度条
     private int mViewWidth;
-    private float realProgress;
+    private float realProgress;//根据Progress和width计算出的实际进度值
     private Paint mTextPaint;
+    private float mid; //中间矩形的长度
 
-    public ProgressView(Context context) {
+    public NewProgressView(Context context) {
         super(context);
         initView();
     }
 
-    public ProgressView(Context context, @Nullable AttributeSet attrs) {
+    public NewProgressView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         initView();
     }
 
-    public ProgressView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+    public NewProgressView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         initView();
     }
@@ -78,12 +81,14 @@ public class ProgressView extends View {
         mPaddingRight = getPaddingRight();
         mBorderDrawHeight = mHeight - mPaddingTop - mPaddingBottom;
         mViewWidth = mWidth - mPaddingLeft - mPaddingRight;
+        //中间部分的长度
+        mid = mViewWidth - Float.valueOf(mBorderDrawHeight);
     }
 
     public void setProgress(int progress) {
         mProgress = progress;
         //根据总长度获取实时进度值
-        realProgress = Float.valueOf(mProgress) * ((Float.valueOf(mViewWidth) - Float.valueOf(mBorderDrawHeight)) / 100);
+//        realProgress = Float.valueOf(mProgress) * ((Float.valueOf(mViewWidth)) / 100);
         invalidate();
     }
 
@@ -95,30 +100,50 @@ public class ProgressView extends View {
         canvas.drawLine(mPaddingLeft + mBorderDrawHeight / 2, mBorderDrawHeight + mPaddingTop, mWidth - mPaddingRight - mBorderDrawHeight / 2, mBorderDrawHeight + mPaddingTop, mBorderPaint);
         RectF rectRight = new RectF(mWidth - mBorderDrawHeight - mPaddingRight, mPaddingTop, mWidth - mPaddingRight, mBorderDrawHeight + mPaddingTop);
         canvas.drawArc(rectRight, 270, 180, false, mBorderPaint);
+        realProgress = mProgress * (Float.valueOf(mViewWidth) / 100);
 
+        //根据长度计算角度  半径减去前面的
+        float radius = Float.valueOf(mBorderDrawHeight) / 2;  //半径
+        float dx = radius - realProgress;   //半径减去进度值
+        if (dx < 0) dx = 0;
+        float dy = radius * radius - dx * dx;
+        double a = Math.sqrt(dy) / radius;
+        float asin = (float) Math.toDegrees(Math.acos(a));
+        //前面的半圆
+        RectF rectLeftFill = new RectF(mPaddingLeft + mBorderWidth, mPaddingTop + mBorderWidth, mBorderDrawHeight + mPaddingLeft, mBorderDrawHeight - mBorderWidth + mPaddingTop);
+        canvas.drawArc(rectLeftFill, 90 + asin, 180 - asin * 2, false, mFillPaint);
 
-        if (realProgress != 0) {
-
-
-            //前面的半圆
-            RectF rectLeftFill = new RectF(mPaddingLeft + mBorderWidth, mPaddingTop + mBorderWidth, mBorderDrawHeight + mPaddingLeft, mBorderDrawHeight - mBorderWidth + mPaddingTop);
-            canvas.drawArc(rectLeftFill, 90, 180, true, mFillPaint);
-
+        if (realProgress > radius) { //超过半圆了 画矩形
             //中间的矩形
-            RectF midRectf = new RectF(mPaddingLeft + mBorderDrawHeight / 2, mPaddingTop + mBorderWidth, realProgress + mPaddingLeft + mBorderDrawHeight / 2, mBorderDrawHeight + mPaddingTop - mBorderWidth);
+            float temp = realProgress + mPaddingLeft;
+            //进入了最后一个半圆的区域
+            if (realProgress > mViewWidth - radius) {
+                temp = mViewWidth - radius + mPaddingLeft;
+            }
+            RectF midRectf = new RectF(mPaddingLeft + radius, mPaddingTop + mBorderWidth, temp, mBorderDrawHeight + mPaddingTop - mBorderWidth);
             canvas.drawRect(midRectf, mFillPaint);
-
-            //后面的半圆
-            RectF rectRightFill = new RectF(mPaddingLeft + realProgress, mPaddingTop + mBorderWidth, realProgress + mPaddingLeft + mBorderDrawHeight - mBorderWidth, mBorderDrawHeight - mBorderWidth + mPaddingTop);
-            canvas.drawArc(rectRightFill, 270, 180, true, mFillPaint);
-
         }
-        float textWidth = mTextPaint.measureText(mProgress + "%");
 
+        //进入了最后一个半圆的区域
+        //后面的半圆  画法有点特殊 准确的说是一个梯弧形(两个扇形加两个三角形)
+        if (realProgress > mViewWidth - radius) {
+            float x = realProgress - mid - radius;
+            float degress = (float) Math.toDegrees(Math.asin(x / radius));
+            RectF rectRightFill = new RectF(mViewWidth - radius * 2 + mPaddingLeft, mPaddingTop + mBorderWidth, mWidth - mPaddingRight, mBorderDrawHeight - mBorderWidth + mPaddingTop);
+            canvas.drawArc(rectRightFill, 270, degress, true, mFillPaint);
+            canvas.drawArc(rectRightFill, 90 - degress, degress, true, mFillPaint);
+            Path path = new Path();
+            path.moveTo(getWidth() - radius -mPaddingRight, mHeight / 2);
+            path.lineTo(getWidth() - radius -mPaddingRight+x, (float) (mHeight / 2 - Math.sqrt(radius*radius - x*x)));
+            path.lineTo(getWidth() - radius -mPaddingRight+x,(float) (mHeight / 2 + Math.sqrt(radius*radius - x*x)));
+            path.close();
+            canvas.drawPath(path,mFillPaint);
+        }
+
+        float textWidth = mTextPaint.measureText(mProgress + "%");
         //文字的y轴坐标
         Paint.FontMetrics fontMetrics = mTextPaint.getFontMetrics();
         float y = mHeight / 2 + (Math.abs(fontMetrics.ascent) - fontMetrics.descent) / 2;
-
         canvas.drawText(mProgress + "%", mWidth / 2 - textWidth / 2, y, mTextPaint);
 
     }

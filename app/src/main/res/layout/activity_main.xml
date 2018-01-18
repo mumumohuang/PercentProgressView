@@ -12,6 +12,11 @@
         android:layout_gravity="center_vertical"
         android:padding="4dp"
         android:layout_height="30dp" />
+    <com.example.gyh.progressview.NewProgressView
+        android:id="@+id/npv"
+        android:layout_width="match_parent"
+        android:padding="4dp"
+        android:layout_height="30dp" />
 
     <SeekBar
         android:id="@+id/sb"
