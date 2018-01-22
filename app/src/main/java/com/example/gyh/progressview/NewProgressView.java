@@ -86,12 +86,25 @@ public class NewProgressView extends View {
     }
 
     public void setProgress(int progress) {
-        mProgress = progress;
+        if (progress < 0){
+            mProgress = 0;
+        }else if (progress > maxValue){
+            mProgress = (int) maxValue;
+        }else {
+            mProgress = progress;
+        }
         //根据总长度获取实时进度值
 //        realProgress = Float.valueOf(mProgress) * ((Float.valueOf(mViewWidth)) / 100);
         invalidate();
     }
-
+    private float maxValue = 100;
+    public void setMaxValue(int maxValue){
+        this.maxValue = maxValue;
+    }
+    public void setBorderColor(int color){
+        mBorderPaint.setColor(color);
+        invalidate();
+    }
     @Override
     protected void onDraw(Canvas canvas) {
         RectF rectLeft = new RectF(mPaddingLeft, mPaddingTop, mBorderDrawHeight + mPaddingLeft, mBorderDrawHeight + mPaddingTop);
@@ -100,7 +113,7 @@ public class NewProgressView extends View {
         canvas.drawLine(mPaddingLeft + mBorderDrawHeight / 2, mBorderDrawHeight + mPaddingTop, mWidth - mPaddingRight - mBorderDrawHeight / 2, mBorderDrawHeight + mPaddingTop, mBorderPaint);
         RectF rectRight = new RectF(mWidth - mBorderDrawHeight - mPaddingRight, mPaddingTop, mWidth - mPaddingRight, mBorderDrawHeight + mPaddingTop);
         canvas.drawArc(rectRight, 270, 180, false, mBorderPaint);
-        realProgress = mProgress * (Float.valueOf(mViewWidth) / 100);
+        realProgress = mProgress * (Float.valueOf(mViewWidth) / maxValue);
 
         //根据长度计算角度  半径减去前面的
         float radius = Float.valueOf(mBorderDrawHeight) / 2;  //半径
@@ -140,11 +153,11 @@ public class NewProgressView extends View {
             canvas.drawPath(path,mFillPaint);
         }
 
-        float textWidth = mTextPaint.measureText(mProgress + "%");
+        float textWidth = mTextPaint.measureText((int)Math.floor(realProgress/mViewWidth*100) + "%");
         //文字的y轴坐标
         Paint.FontMetrics fontMetrics = mTextPaint.getFontMetrics();
         float y = mHeight / 2 + (Math.abs(fontMetrics.ascent) - fontMetrics.descent) / 2;
-        canvas.drawText(mProgress + "%", mWidth / 2 - textWidth / 2, y, mTextPaint);
+        canvas.drawText((int)Math.floor(realProgress/mViewWidth*100) + "%", Float.valueOf(mWidth) / 2 - textWidth / 2, y, mTextPaint);
 
     }
 }
